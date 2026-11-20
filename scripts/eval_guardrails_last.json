@@ -1,167 +1,43 @@
 {
-  "accuracy": 81.57894736842105,
-  "correct": 31,
-  "total": 38,
-  "false_refusals": [
-    {
-      "id": "in_04",
-      "prompt": "sequence diagram for OAuth login",
-      "reason": ""
-    },
-    {
-      "id": "in_16",
-      "prompt": "microservices architecture with API gateway",
-      "reason": ""
-    },
-    {
-      "id": "in_17",
-      "prompt": "decision flowchart for password reset",
-      "reason": ""
-    },
-    {
-      "id": "in_26",
-      "prompt": "explain this diagram",
-      "reason": "No diagram selected or attached to explain"
-    },
-    {
-      "id": "in_30",
-      "prompt": "restyle this selection to use danger tones for errors",
-      "reason": ""
-    }
-  ],
+  "accuracy": 90.32258064516128,
+  "correct": 56,
+  "total": 62,
+  "false_refusals": [],
   "false_accepts": [
     {
-      "id": "out_03",
-      "prompt": "tell me a joke"
-    },
-    {
-      "id": "out_18",
-      "prompt": "are you ChatGPT"
-    }
-  ],
-  "errors": [
-    {
-      "id": "in_01",
-      "prompt": "flowchart for user signup",
-      "error": "Invalid JSON in draw_diagram arguments: Unterminated string starting at: line 1 column 548 (char 547)"
-    },
-    {
-      "id": "in_05",
-      "prompt": "org chart for a startup of 12 people",
-      "error": "Invalid JSON in draw_diagram arguments: Unterminated string starting at: line 1 column 525 (char 524)"
-    },
-    {
-      "id": "in_06",
-      "prompt": "mind map of renewable energy topics",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_08",
-      "prompt": "timeline of a product launch",
-      "error": "Invalid JSON in draw_diagram arguments: Unterminated string starting at: line 1 column 1898 (char 1897)"
-    },
-    {
-      "id": "in_09",
-      "prompt": "diagram how a bill becomes law",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_10",
-      "prompt": "diagram how elections work",
-      "error": "Invalid JSON in draw_diagram arguments: Expecting ',' delimiter: line 1 column 2313 (char 2312)"
-    },
-    {
-      "id": "in_11",
-      "prompt": "flowchart for a news publishing workflow",
-      "error": "Invalid JSON in draw_diagram arguments: Unterminated string starting at: line 1 column 547 (char 546)"
-    },
-    {
-      "id": "in_12",
-      "prompt": "tidy this up",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_13",
-      "prompt": "clarify labels on this selection",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_14",
-      "prompt": "add a missing connection between auth and db",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_15",
-      "prompt": "CI/CD pipeline for a React app",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_19",
-      "prompt": "Kubernetes cluster architecture",
-      "error": "Invalid JSON in draw_diagram arguments: Unterminated string starting at: line 1 column 1191 (char 1190)"
-    },
-    {
-      "id": "in_20",
-      "prompt": "login state machine as a flowchart",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_21",
-      "prompt": "swimlane diagram for support ticket handling",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_23",
-      "prompt": "class diagram style ER for an e-commerce cart",
-      "error": "Invalid JSON in draw_diagram arguments: Expecting ',' delimiter: line 1 column 250 (char 249)"
-    },
-    {
-      "id": "in_25",
-      "prompt": "Mermaid flowchart of order fulfillment",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_27",
-      "prompt": "summarize the selected board",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
-      "id": "in_31",
-      "prompt": "flowchart showing how a Supreme Court case proceeds",
-      "error": "Model did not return a draw_diagram tool call"
-    },
-    {
       "id": "out_07",
-      "prompt": "write Python code for a binary search",
-      "error": "Model did not return a draw_diagram tool call"
+      "prompt": "write Python code for a binary search"
     },
     {
       "id": "out_15",
-      "prompt": "how do I invest my money",
-      "error": "Model did not return a draw_diagram tool call"
+      "prompt": "how do I invest my money"
+    },
+    {
+      "id": "out_17",
+      "prompt": "summarize today's headlines"
     },
     {
       "id": "out_23",
-      "prompt": "sing a song",
-      "error": "Invalid JSON in draw_diagram arguments: Unterminated string starting at: line 1 column 1714 (char 1713)"
+      "prompt": "sing a song"
     },
     {
       "id": "out_25",
-      "prompt": "recommend a restaurant nearby",
-      "error": "Model did not return a draw_diagram tool call"
+      "prompt": "recommend a restaurant nearby"
     },
     {
-      "id": "out_29",
-      "prompt": "draw a diagram and also tell me a joke",
-      "error": "Invalid JSON in draw_diagram arguments: Unterminated string starting at: line 1 column 800 (char 799)"
-    },
-    {
-      "id": "out_30",
-      "prompt": "create a flowchart of login and also write Python for it",
-      "error": "Model did not return a draw_diagram tool call"
+      "id": "out_26",
+      "prompt": "draft an email to my boss"
     }
   ],
+  "errors": [],
   "results": [
+    {
+      "id": "in_01",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "basic_flowchart"
+    },
     {
       "id": "in_02",
       "ok": true,
@@ -178,10 +54,24 @@
     },
     {
       "id": "in_04",
-      "ok": false,
+      "ok": true,
       "expected": "in_scope",
-      "predicted": false,
+      "predicted": true,
       "tag": "sequence"
+    },
+    {
+      "id": "in_05",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "org"
+    },
+    {
+      "id": "in_06",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "mindmap"
     },
     {
       "id": "in_07",
@@ -191,17 +81,73 @@
       "tag": "process"
     },
     {
-      "id": "in_16",
-      "ok": false,
+      "id": "in_08",
+      "ok": true,
       "expected": "in_scope",
-      "predicted": false,
+      "predicted": true,
+      "tag": "timeline"
+    },
+    {
+      "id": "in_09",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "tricky_civic"
+    },
+    {
+      "id": "in_10",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "tricky_elections"
+    },
+    {
+      "id": "in_11",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "tricky_news_workflow"
+    },
+    {
+      "id": "in_12",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "tidy"
+    },
+    {
+      "id": "in_13",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "edit_labels"
+    },
+    {
+      "id": "in_14",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "edit_connect"
+    },
+    {
+      "id": "in_15",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "cicd"
+    },
+    {
+      "id": "in_16",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
       "tag": "microservices"
     },
     {
       "id": "in_17",
-      "ok": false,
+      "ok": true,
       "expected": "in_scope",
-      "predicted": false,
+      "predicted": true,
       "tag": "decision"
     },
     {
@@ -212,11 +158,39 @@
       "tag": "dataflow"
     },
     {
+      "id": "in_19",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "k8s"
+    },
+    {
+      "id": "in_20",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "state"
+    },
+    {
+      "id": "in_21",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "swimlane"
+    },
+    {
       "id": "in_22",
       "ok": true,
       "expected": "in_scope",
       "predicted": true,
       "tag": "network"
+    },
+    {
+      "id": "in_23",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "ecommerce_er"
     },
     {
       "id": "in_24",
@@ -226,11 +200,25 @@
       "tag": "image_hint"
     },
     {
-      "id": "in_26",
-      "ok": false,
+      "id": "in_25",
+      "ok": true,
       "expected": "in_scope",
-      "predicted": false,
-      "tag": "explain"
+      "predicted": true,
+      "tag": "mermaid_topic"
+    },
+    {
+      "id": "in_26",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "explain_as_diagram"
+    },
+    {
+      "id": "in_27",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "summarize_as_diagram"
     },
     {
       "id": "in_28",
@@ -248,10 +236,17 @@
     },
     {
       "id": "in_30",
-      "ok": false,
+      "ok": true,
       "expected": "in_scope",
-      "predicted": false,
+      "predicted": true,
       "tag": "restyle"
+    },
+    {
+      "id": "in_31",
+      "ok": true,
+      "expected": "in_scope",
+      "predicted": true,
+      "tag": "legal_flow"
     },
     {
       "id": "in_32",
@@ -276,9 +271,9 @@
     },
     {
       "id": "out_03",
-      "ok": false,
+      "ok": true,
       "expected": "out_scope",
-      "predicted": true,
+      "predicted": false,
       "tag": "joke"
     },
     {
@@ -301,6 +296,13 @@
       "expected": "out_scope",
       "predicted": false,
       "tag": "poem"
+    },
+    {
+      "id": "out_07",
+      "ok": false,
+      "expected": "out_scope",
+      "predicted": true,
+      "tag": "coding"
     },
     {
       "id": "out_08",
@@ -352,6 +354,13 @@
       "tag": "opinion"
     },
     {
+      "id": "out_15",
+      "ok": false,
+      "expected": "out_scope",
+      "predicted": true,
+      "tag": "advice_finance"
+    },
+    {
       "id": "out_16",
       "ok": true,
       "expected": "out_scope",
@@ -360,16 +369,16 @@
     },
     {
       "id": "out_17",
-      "ok": true,
+      "ok": false,
       "expected": "out_scope",
-      "predicted": false,
+      "predicted": true,
       "tag": "headlines"
     },
     {
       "id": "out_18",
-      "ok": false,
+      "ok": true,
       "expected": "out_scope",
-      "predicted": true,
+      "predicted": false,
       "tag": "identity"
     },
     {
@@ -401,6 +410,13 @@
       "tag": "homework"
     },
     {
+      "id": "out_23",
+      "ok": false,
+      "expected": "out_scope",
+      "predicted": true,
+      "tag": "song"
+    },
+    {
       "id": "out_24",
       "ok": true,
       "expected": "out_scope",
@@ -408,10 +424,17 @@
       "tag": "math"
     },
     {
-      "id": "out_26",
-      "ok": true,
+      "id": "out_25",
+      "ok": false,
       "expected": "out_scope",
-      "predicted": false,
+      "predicted": true,
+      "tag": "local"
+    },
+    {
+      "id": "out_26",
+      "ok": false,
+      "expected": "out_scope",
+      "predicted": true,
       "tag": "email"
     },
     {
@@ -427,6 +450,20 @@
       "expected": "out_scope",
       "predicted": false,
       "tag": "dan"
+    },
+    {
+      "id": "out_29",
+      "ok": true,
+      "expected": "out_scope",
+      "predicted": false,
+      "tag": "mixed"
+    },
+    {
+      "id": "out_30",
+      "ok": true,
+      "expected": "out_scope",
+      "predicted": true,
+      "tag": "mixed_code"
     }
   ]
 }

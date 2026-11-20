@@ -1,5 +1,5 @@
 /** "Tidy up": re-run the ELK layout locally (no LLM) for the selected diagram shapes. */
-import type { Editor, TLShape, TLShapeId } from 'tldraw'
+import { Box, type Editor, type TLShape, type TLShapeId } from 'tldraw'
 import { GRID, snapLayout } from './snap'
 import { useDiagramStyleStore } from '../../store/diagramStyleStore'
 import { readEdgeMeta } from '../../shapes/DiagramArrowShapeUtil'
@@ -9,12 +9,30 @@ import type { EdgeKind } from '../types'
 import { createEdgeArrows, type EdgeInput } from './edges'
 import { editorWidthFn, ensureDiagramFonts } from './editorMeasure'
 import { getElk } from './elkClient'
-import { chooseLayout, type LayoutInput } from './layout'
+import { chooseLayout, FIT_PADDING, MAX_FIT_ZOOM, type Dir, type LayoutInput } from './layout'
 import { viewportSize } from './pipeline'
 import { measureEdgeLabel, measureGroupTitle } from './sizing'
 import type { DiagramStyle } from '../../lib/diagramTheme'
 
 export type TidyResult = { ok: true } | { ok: false; error: string }
+
+/** Infer LR vs TB from how edges currently flow so tidy does not flip the diagram. */
+function inferDirection(
+  editor: Editor,
+  arrows: { from: TLShapeId; to: TLShapeId }[],
+): Dir {
+  let dxSum = 0
+  let dySum = 0
+  for (const a of arrows) {
+    const s = editor.getShapePageBounds(a.from)
+    const t = editor.getShapePageBounds(a.to)
+    if (!s || !t) continue
+    dxSum += Math.abs(t.midX - s.midX)
+    dySum += Math.abs(t.midY - s.midY)
+  }
+  if (dxSum === 0 && dySum === 0) return 'TB'
+  return dySum >= dxSum ? 'TB' : 'LR'
+}
 
 export async function tidySelection(editor: Editor): Promise<TidyResult> {
   const selected = selectedDiagramNodes(editor)
@@ -81,9 +99,13 @@ export async function tidySelection(editor: Editor): Promise<TidyResult> {
   }
 
   const before = editor.getShapesPageBounds([...nodes.map((n) => n.id), ...groupShapes.keys()])
+  // Keep the current flow direction and never wrap/compress to the viewport — that was shoving
+  // side-branch nodes off-screen so they looked deleted.
+  const direction = inferDirection(editor, arrows)
   const raw = await chooseLayout(getElk(), input, {
-    direction: 'auto',
+    direction,
     viewport: viewportSize(editor),
+    compact: false,
   })
   const layout = snapLayout(raw, GRID)
   const cxLayout = layout.bounds.x + layout.bounds.w / 2
@@ -113,7 +135,8 @@ export async function tidySelection(editor: Editor): Promise<TidyResult> {
       let x: number
       let y: number
       if (g) {
-        const gr = layout.groups[g]!
+        const gr = layout.groups[g]
+        if (!gr) continue
         x = r.x - gr.x
         y = r.y - gr.y
       } else {
@@ -141,5 +164,15 @@ export async function tidySelection(editor: Editor): Promise<TidyResult> {
       meta: meta && 'drawai' in meta ? { drawai: meta.drawai } : undefined,
     })
   })
+
+  const afterIds = [...nodes.map((n) => n.id), ...groupShapes.keys()]
+  const after = editor.getShapesPageBounds(afterIds)
+  if (after) {
+    editor.zoomToBounds(new Box(after.x, after.y, after.w, after.h), {
+      inset: FIT_PADDING,
+      targetZoom: MAX_FIT_ZOOM,
+      animation: { duration: 220 },
+    })
+  }
   return { ok: true }
 }

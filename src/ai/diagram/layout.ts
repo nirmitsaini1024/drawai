@@ -203,13 +203,19 @@ export function fitZoom(bounds: Rect, viewport: Viewport): number {
 export type ChooseOptions = {
   direction: 'LR' | 'TB' | 'auto'
   viewport: Viewport
+  /**
+   * When false, never flip direction or wrap to fit the viewport. Used by "Tidy up" so a re-layout
+   * keeps the same flow and does not shove side branches off-screen.
+   */
+  compact?: boolean
 }
 
 /**
  * Pick the final layout. Rules:
  *  - explicit direction is respected (but may wrap if it would be unreadable);
  *  - auto: TB, switching to LR when TB is much taller than wide (> 1.8x) with > 8 nodes;
- *  - if the fitted zoom would be < 0.6 for a < 20 node diagram, try the other direction / wrapping.
+ *  - if the fitted zoom would be < 0.6 for a < 20 node diagram, try the other direction / wrapping
+ *    (skipped when `compact: false`).
  */
 export async function chooseLayout(
   elk: ELK,
@@ -218,14 +224,15 @@ export async function chooseLayout(
 ): Promise<LayoutResult> {
   const count = input.nodes.length
   const explicit = opts.direction !== 'auto'
+  const compact = opts.compact !== false
   const first: Dir = explicit ? (opts.direction as Dir) : 'TB'
   let best = await runElk(elk, input, first)
 
-  if (!explicit && count > 8 && best.bounds.h > best.bounds.w * 1.8) {
+  if (compact && !explicit && count > 8 && best.bounds.h > best.bounds.w * 1.8) {
     best = await runElk(elk, input, 'LR')
   }
 
-  if (count < 20 && fitZoom(best.bounds, opts.viewport) < MIN_READABLE_ZOOM) {
+  if (compact && count < 20 && fitZoom(best.bounds, opts.viewport) < MIN_READABLE_ZOOM) {
     const candidates: LayoutResult[] = []
     if (!explicit) candidates.push(await runElk(elk, input, best.direction === 'TB' ? 'LR' : 'TB'))
     if (input.groups.length === 0) {

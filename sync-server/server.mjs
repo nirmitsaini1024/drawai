@@ -9,11 +9,38 @@
  *   revoked links are rejected on connect and live sockets are closed.
  */
 import { createServer } from 'node:http'
-import { pathToFileURL } from 'node:url'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { WebSocketServer } from 'ws'
 import { createPgStore, createPool } from './db.mjs'
 import { authorizeToken, createRoomManager } from './rooms.mjs'
 import { roomSchema } from './schema.mjs'
+
+/** Load KEY=VALUE pairs from server/.env when DATABASE_URL is not already set. */
+function loadServerEnv() {
+  if (process.env.DATABASE_URL) return
+  try {
+    const envPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'server', '.env')
+    for (const line of readFileSync(envPath, 'utf8').split('\n')) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const eq = trimmed.indexOf('=')
+      if (eq <= 0) continue
+      const key = trimmed.slice(0, eq).trim()
+      let value = trimmed.slice(eq + 1).trim()
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1)
+      }
+      if (process.env[key] === undefined) process.env[key] = value
+    }
+  } catch {
+    /* optional for production where env is injected */
+  }
+}
 
 const ROOM_ID_RE = /^[A-Za-z0-9_-]{1,64}$/
 
@@ -117,6 +144,7 @@ export function createSyncServer({
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
 
 if (isMain) {
+  loadServerEnv()
   const databaseUrl = process.env.DATABASE_URL || 'postgresql://drawai:drawai@localhost:5432/drawai'
   const port = Number(process.env.SYNC_PORT || 8787)
   const pool = createPool(databaseUrl)

@@ -55,6 +55,12 @@ CLIENT_HASH_SALT = os.getenv("CLIENT_HASH_SALT", "drawai-guardrails")
 # Protects GET /api/stats/guardrails. Unset → endpoint returns 404.
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
 
+# AI / server log file (rotating). Default: server/logs/ai.log
+LOG_DIR = Path(os.getenv("LOG_DIR", str(Path(__file__).resolve().parent / "logs")))
+LOG_FILE = os.getenv("LOG_FILE", "ai.log")
+LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(5 * 1024 * 1024)))
+LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
+
 
 def allowed_origins() -> list[str]:
     return [o.strip() for o in WEB_ORIGIN.split(",") if o.strip()]

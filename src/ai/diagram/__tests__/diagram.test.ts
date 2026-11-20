@@ -4,6 +4,7 @@ import { runElk, SPACING, type LayoutInput, type Rect } from '../layout'
 import { normalizeGraph } from '../normalize'
 import { measureNode, LABEL_LINE_H, type FontSpec } from '../sizing'
 import { polylineHitsRect } from '../routing'
+import { snapLayout } from '../snap'
 import { TONE_COLORS, contrastRatio } from '../../../lib/diagramTheme'
 import type { Graph } from '../../types'
 
@@ -103,6 +104,20 @@ describe.each(Object.keys(graphs))('layout %s', (name) => {
       const g = res.groups[node.group]
       const r = res.nodes[node.id]
       expect(r.x >= g.x && r.y >= g.y && r.x + r.w <= g.x + g.w && r.y + r.h <= g.y + g.h).toBe(true)
+    }
+  })
+
+  test('groups still contain their members after centre-snap', async () => {
+    const { n, res } = await layout(graphs[name])
+    const snapped = snapLayout(res)
+    for (const node of n.nodes) {
+      if (!node.group) continue
+      const g = snapped.groups[node.group]
+      const r = snapped.nodes[node.id]
+      expect(
+        r.x >= g.x && r.y >= g.y && r.x + r.w <= g.x + g.w && r.y + r.h <= g.y + g.h,
+        `${node.id} outside ${node.group} after snap`,
+      ).toBe(true)
     }
   })
 })

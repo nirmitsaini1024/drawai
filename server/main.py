@@ -24,7 +24,7 @@ from guardrails.input_checks import (
     validate_prompt,
     validate_selection_payload,
 )
-from guardrails.logging import GuardrailOutcome, get_stats, log_ai_request
+from guardrails.logging import GuardrailOutcome, configure_logging, get_stats, log_ai_request
 from guardrails.pipeline import (
     RateLimited,
     call_tool_with_retry,
@@ -33,6 +33,8 @@ from guardrails.pipeline import (
     rate_limit_response,
     refused_payload,
 )
+
+configure_logging()
 from guardrails.prompts import (
     DIAGRAM_STYLE_GUIDE,
     DIAGRAM_SYSTEM,
@@ -287,20 +289,22 @@ async def create_diagram(request: Request, body: DiagramRequest) -> JSONResponse
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
-            outcome=GuardrailOutcome.invalid_output if isinstance(exc, ValueError) else GuardrailOutcome.error,
+            outcome=GuardrailOutcome.invalid_output if isinstance(exc, (ValueError, TypeError)) else GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},
             status=502,
             limit_headers=headers,
         )
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
             outcome=GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},
@@ -378,24 +382,26 @@ async def edit_selection(request: Request, body: EditRequest) -> JSONResponse:
         )
         payload = EditResponse(ops=result.ops, summary=result.summary).model_dump(exclude_none=True)
         return json_with_limits(payload, limit_headers=headers)
-    except (ValueError, TypeError, APIError):
+    except (ValueError, TypeError, APIError) as exc:
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
-            outcome=GuardrailOutcome.invalid_output,
+            outcome=GuardrailOutcome.invalid_output if isinstance(exc, (ValueError, TypeError)) else GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},
             status=502,
             limit_headers=headers,
         )
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
             outcome=GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},
@@ -495,24 +501,26 @@ async def diagram_from_image(request: Request, body: ImageDiagramRequest) -> JSO
             graph.model_dump(by_alias=True, exclude_none=True, exclude={"in_scope", "refusal_reason"}),
             limit_headers=headers,
         )
-    except (ValueError, TypeError, APIError):
+    except (ValueError, TypeError, APIError) as exc:
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
-            outcome=GuardrailOutcome.invalid_output,
+            outcome=GuardrailOutcome.invalid_output if isinstance(exc, (ValueError, TypeError)) else GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},
             status=502,
             limit_headers=headers,
         )
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
             outcome=GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},
@@ -615,24 +623,26 @@ async def mermaid_to_diagram(request: Request, body: MermaidRequest) -> JSONResp
             graph.model_dump(by_alias=True, exclude_none=True, exclude={"in_scope", "refusal_reason"}),
             limit_headers=headers,
         )
-    except (ValueError, TypeError, APIError):
+    except (ValueError, TypeError, APIError) as exc:
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
-            outcome=GuardrailOutcome.invalid_output,
+            outcome=GuardrailOutcome.invalid_output if isinstance(exc, (ValueError, TypeError)) else GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},
             status=502,
             limit_headers=headers,
         )
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
             outcome=GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},
@@ -737,6 +747,7 @@ async def explain_selection(request: Request, body: ExplainRequest) -> JSONRespo
                 latency_ms=latency,
                 prompt_tokens=pt,
                 completion_tokens=ct,
+                error_detail="empty explanation text after successful tool call",
             )
             return json_with_limits(
                 {"detail": friendly_llm_error()},
@@ -756,24 +767,26 @@ async def explain_selection(request: Request, body: ExplainRequest) -> JSONRespo
             TextResponse(text=text).model_dump(exclude_none=True),
             limit_headers=headers,
         )
-    except (ValueError, TypeError, APIError):
+    except (ValueError, TypeError, APIError) as exc:
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
-            outcome=GuardrailOutcome.invalid_output,
+            outcome=GuardrailOutcome.invalid_output if isinstance(exc, (ValueError, TypeError)) else GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},
             status=502,
             limit_headers=headers,
         )
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         log_ai_request(
             endpoint=endpoint,
             client_id=client_id,
             outcome=GuardrailOutcome.error,
             latency_ms=(time.perf_counter() - started) * 1000,
+            error=exc,
         )
         return json_with_limits(
             {"detail": friendly_llm_error()},

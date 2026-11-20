@@ -79,6 +79,37 @@ export function createPgStore(pool) {
     },
 
     /**
+     * Snapshot to load when a room opens with no live sessions.
+     * Prefer the board when it is newer than the room (or the room is empty),
+     * so "go live" continues the board you were editing — not a stale empty room.
+     */
+    async loadInitialSnapshot(roomId, boardId) {
+      const [roomRes, boardRes] = await Promise.all([
+        pool.query('SELECT snapshot, updated_at FROM rooms WHERE id = $1', [roomId]),
+        boardId
+          ? pool.query(
+              'SELECT snapshot, updated_at FROM boards WHERE id = $1 AND deleted_at IS NULL',
+              [boardId],
+            )
+          : Promise.resolve({ rows: [] }),
+      ])
+      const room = roomRes.rows[0]
+      const board = boardRes.rows[0]
+      const roomSnap = room?.snapshot ?? null
+      const boardDoc = board?.snapshot?.document ?? null
+      const roomAt = room?.updated_at ? new Date(room.updated_at).getTime() : 0
+      const boardAt = board?.updated_at ? new Date(board.updated_at).getTime() : 0
+      const roomEmpty = isRoomSnapshotEmpty(roomSnap)
+
+      if (boardDoc && (!roomSnap || roomEmpty || boardAt > roomAt)) {
+        return { snapshot: boardDoc, source: 'board' }
+      }
+      if (roomSnap) return { snapshot: roomSnap, source: 'room' }
+      if (boardDoc) return { snapshot: boardDoc, source: 'board' }
+      return { snapshot: null, source: null }
+    },
+
+    /**
      * Upsert the room snapshot and, when the room belongs to a board, write the
      * document back into the board so the owner sees collaborators' edits.
      */
@@ -124,6 +155,14 @@ export function createPgStore(pool) {
       )
     },
   }
+}
+
+/** True when a persisted room has no shape records (pages/cameras alone don't count). */
+export function isRoomSnapshotEmpty(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return true
+  const docs = snapshot.documents
+  if (!Array.isArray(docs) || docs.length === 0) return true
+  return !docs.some((d) => d?.state?.typeName === 'shape')
 }
 
 /** RoomSnapshot ({documents, schema}) -> TLEditorSnapshot, keeping the board's session state. */

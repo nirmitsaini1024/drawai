@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
+import {
+  getCollabIdentity,
+  setCollabUsername,
+  subscribeCollabIdentity,
+} from '../collab/identity'
 import { shareUrl } from '../collab/roomRoute'
+import { copyText } from '../lib/clipboard'
 import { useSyncStatus } from '../lib/syncStatus'
 import { useAppStore } from '../store/appStore'
 import { useLibraryStore } from '../store/libraryStore'
@@ -41,10 +47,17 @@ export function TopBar({ collab }: { collab: CollabInfo | null }) {
   const board = getActiveBoard()
   const [name, setName] = useState(board?.name ?? 'Untitled')
   const [linkCopied, setLinkCopied] = useState(false)
+  const [collabName, setCollabName] = useState(() => getCollabIdentity().name)
 
   useEffect(() => {
     setName(board?.name ?? 'Untitled')
   }, [board?.name, activeBoardId])
+
+  useEffect(() => {
+    if (!collab) return
+    setCollabName(getCollabIdentity().name)
+    return subscribeCollabIdentity((identity) => setCollabName(identity.name))
+  }, [collab])
 
   function commitName() {
     const next = name.trim() || 'Untitled'
@@ -54,10 +67,15 @@ export function TopBar({ collab }: { collab: CollabInfo | null }) {
     }
   }
 
+  function commitCollabName() {
+    const next = setCollabUsername(collabName)
+    setCollabName(next.name)
+  }
+
   async function copyCollabLink() {
     if (!collab) return
     try {
-      await navigator.clipboard.writeText(shareUrl(collab.token))
+      await copyText(shareUrl(collab.token))
       setLinkCopied(true)
       setTimeout(() => setLinkCopied(false), 1500)
     } catch {
@@ -105,13 +123,25 @@ export function TopBar({ collab }: { collab: CollabInfo | null }) {
       </button>
 
       {collab ? (
-        <div className="min-w-0 flex-1 truncate px-2 text-sm">
-          <span className="font-medium">Live room</span>
-          {!collab.roomId && (
-            <span className="ml-2 text-xs text-[var(--drawai-muted)]">connecting…</span>
-          )}
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-2 text-sm">
+          <span className="shrink-0 font-medium">Live</span>
+          <label className="flex min-w-0 items-center gap-1.5">
+            <span className="shrink-0 text-xs text-[var(--drawai-muted)]">Your name</span>
+            <input
+              value={collabName}
+              onChange={(e) => setCollabName(e.target.value)}
+              onBlur={commitCollabName}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+              }}
+              maxLength={32}
+              className="min-w-0 max-w-[10rem] rounded-md border border-[var(--drawai-border)] bg-[var(--drawai-bg)] px-2 py-1 text-sm outline-none focus:border-[var(--drawai-accent)]"
+              aria-label="Your display name for live cursors"
+              title="Saved in this browser only — other people on the same link keep their own name"
+            />
+          </label>
           {collab.readonly && (
-            <span className="ml-2 rounded bg-[var(--drawai-bg)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--drawai-muted)]">
+            <span className="shrink-0 rounded bg-[var(--drawai-bg)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--drawai-muted)]">
               read-only
             </span>
           )}

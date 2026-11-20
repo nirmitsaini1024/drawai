@@ -1,4 +1,6 @@
 import {
+  createShapePropsMigrationIds,
+  createShapePropsMigrationSequence,
   createTLSchema,
   defaultBindingSchemas,
   defaultShapeSchemas,
@@ -43,6 +45,25 @@ const PRESET_KINDS = [
   'document',
 ]
 
+/** Must match `IconShapeUtil` migrations in `src/shapes/IconShapeUtil.tsx`. */
+const iconVersions = createShapePropsMigrationIds('icon', {
+  AddSize: 1,
+})
+
+const iconMigrations = createShapePropsMigrationSequence({
+  sequence: [
+    {
+      id: iconVersions.AddSize,
+      up(props) {
+        props.size = props.size ?? 'm'
+      },
+      down(props) {
+        delete props.size
+      },
+    },
+  ],
+})
+
 export const roomSchema = createTLSchema({
   shapes: {
     ...defaultShapeSchemas,
@@ -55,6 +76,7 @@ export const roomSchema = createTLSchema({
         color: DefaultColorStyle,
         size: DefaultSizeStyle,
       },
+      migrations: iconMigrations,
     },
     dnode: {
       props: {

@@ -1,6 +1,15 @@
 import { useSync } from '@tldraw/sync'
-import { useCallback, useEffect, type DragEvent } from 'react'
-import { defaultBindingUtils, Tldraw, type Editor } from 'tldraw'
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react'
+import {
+  atom,
+  createUserId,
+  defaultBindingUtils,
+  Tldraw,
+  UserRecordType,
+  type Editor,
+  type Signal,
+  type TLUser,
+} from 'tldraw'
 import { insertPresetShape, PRESET_DRAG_MIME } from '../library/insertPreset'
 import { isPresetKind } from '../library/presetKinds'
 import { insertLibraryContent } from '../library/shapeContent'
@@ -11,7 +20,18 @@ import { useLibraryStore } from '../store/libraryStore'
 import { uiComponents, uiOverrides } from '../tldraw/uiConfig'
 import { ShapesPanel } from '../components/ShapesPanel'
 import { collabAssetStore } from './assets'
+import { getCollabIdentity, subscribeCollabIdentity, type CollabIdentity } from './identity'
 import { syncWsBase } from './roomRoute'
+
+function toUserRecord(identity: CollabIdentity) {
+  return UserRecordType.create({
+    id: createUserId(identity.id),
+    name: identity.name,
+    color: identity.color,
+    imageUrl: '',
+    meta: {},
+  })
+}
 
 type Props = {
   roomId: string
@@ -27,17 +47,46 @@ export function CollabCanvas({ roomId, token, readonly }: Props) {
 
   const uri = `${syncWsBase()}/${encodeURIComponent(roomId)}?token=${encodeURIComponent(token)}`
 
+  const currentUser = useMemo(
+    () => atom('drawai-collab-user', toUserRecord(getCollabIdentity())),
+    [],
+  )
+
+  const users = useMemo(
+    () => ({ currentUser: currentUser as Signal<null | TLUser> }),
+    [currentUser],
+  )
+
+  useEffect(() => {
+    return subscribeCollabIdentity((identity) => {
+      currentUser.set(toUserRecord(identity))
+      const ed = useAppStore.getState().editor
+      ed?.user.updateUserPreferences({
+        name: identity.name,
+        color: identity.color,
+        id: identity.id,
+      })
+    })
+  }, [currentUser])
+
   const store = useSync({
     uri,
     assets: collabAssetStore,
     shapeUtils: syncShapeUtils,
     bindingUtils: defaultBindingUtils,
+    users,
   })
 
   const handleMount = useCallback(
     (ed: Editor) => {
       setEditor(ed)
-      ed.user.updateUserPreferences({ colorScheme: theme })
+      const identity = getCollabIdentity()
+      ed.user.updateUserPreferences({
+        colorScheme: theme,
+        name: identity.name,
+        color: identity.color,
+        id: identity.id,
+      })
       if (readonly) {
         ed.updateInstanceState({ isReadonly: true })
       }
@@ -50,6 +99,9 @@ export function CollabCanvas({ roomId, token, readonly }: Props) {
     if (!editor) return
     editor.updateInstanceState({ isReadonly: readonly })
   }, [editor, readonly])
+
+  const [you, setYou] = useState(() => getCollabIdentity())
+  useEffect(() => subscribeCollabIdentity(setYou), [])
 
   function onDragOver(e: DragEvent) {
     if (readonly) return
@@ -102,15 +154,33 @@ export function CollabCanvas({ roomId, token, readonly }: Props) {
     )
   }
 
+  const connectionOk = store.status === 'synced-remote' && store.connectionStatus === 'online'
+
   return (
     <div className="relative min-h-0 flex-1" onDragOver={onDragOver} onDrop={onDrop}>
-      {readonly && (
-        <div className="pointer-events-none absolute inset-x-0 top-2 z-[250] flex justify-center">
+      <div className="pointer-events-none absolute inset-x-0 top-2 z-[250] flex justify-center gap-2">
+        {readonly && (
           <div className="rounded-full border border-[var(--drawai-border)] bg-[var(--drawai-surface)] px-3 py-1 text-xs font-medium shadow-md">
             View only · live
           </div>
+        )}
+        <div
+          className={`rounded-full border px-3 py-1 text-xs font-medium shadow-md ${
+            connectionOk
+              ? 'border-[var(--drawai-border)] bg-[var(--drawai-surface)]'
+              : 'border-amber-500/40 bg-[var(--drawai-surface)] text-amber-700 dark:text-amber-300'
+          }`}
+        >
+          <span
+            className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
+              connectionOk ? 'bg-emerald-500' : 'bg-amber-500'
+            }`}
+            aria-hidden
+          />
+          {connectionOk ? 'Live' : 'Reconnecting…'}
+          <span className="ml-2 text-[var(--drawai-muted)]">you: {you.name}</span>
         </div>
-      )}
+      </div>
       <Tldraw
         store={store.store}
         onMount={handleMount}

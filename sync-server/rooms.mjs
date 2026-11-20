@@ -11,6 +11,17 @@ import { hashToken } from './db.mjs'
 
 const noop = () => {}
 
+/** Fallback for test stores that only implement the older load helpers. */
+async function legacyInitialSnapshot(store, roomId, boardId) {
+  const stored = await store.loadRoomSnapshot(roomId)
+  if (stored) return { snapshot: stored, source: 'room' }
+  if (boardId) {
+    const seed = await store.loadBoardSeed(boardId)
+    if (seed) return { snapshot: seed, source: 'board' }
+  }
+  return { snapshot: null, source: null }
+}
+
 /** Look up a share token and verify it grants access to this room. Returns the link or null. */
 export async function authorizeToken(store, roomId, token) {
   if (!token || typeof token !== 'string' || token.length < 16 || token.length > 256) return null
@@ -112,24 +123,27 @@ export function createRoomManager({
         },
       })
 
-      const stored = await store.loadRoomSnapshot(roomId)
-      let seeded = false
+      let source = null
       try {
-        if (stored) {
-          entry.room.loadSnapshot(stored)
-        } else if (boardId) {
-          const seed = await store.loadBoardSeed(boardId)
-          if (seed) {
-            entry.room.loadSnapshot(seed)
-            seeded = true
-          }
+        const initial =
+          typeof store.loadInitialSnapshot === 'function'
+            ? await store.loadInitialSnapshot(roomId, boardId)
+            : await legacyInitialSnapshot(store, roomId, boardId)
+        if (initial.snapshot) {
+          entry.room.loadSnapshot(initial.snapshot)
+          source = initial.source
         }
       } catch (err) {
         log.warn(`[sync] could not load snapshot for ${roomId}: ${err?.message || err}`)
       }
       ready = true
-      if (seeded) scheduleSave(entry) // create the rooms row for a new room
-      log.info(`[sync] open room ${roomId}${stored ? ' (restored)' : seeded ? ' (seeded)' : ''}`)
+      // Persist when we seeded from the board so the rooms row matches that board.
+      if (source === 'board') scheduleSave(entry)
+      log.info(
+        `[sync] open room ${roomId}${
+          source === 'room' ? ' (restored)' : source === 'board' ? ' (seeded from board)' : ''
+        }`,
+      )
     })()
     entries.set(roomId, entry)
     try {

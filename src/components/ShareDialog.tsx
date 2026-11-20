@@ -9,7 +9,9 @@ import {
   type ShareLink,
   type ShareRole,
 } from '../lib/api'
+import { copyText } from '../lib/clipboard'
 import { flushNow } from '../lib/sync'
+import { useSyncStatus } from '../lib/syncStatus'
 import { useAppStore } from '../store/appStore'
 import { useUiStore } from '../store/uiStore'
 
@@ -73,13 +75,34 @@ export function ShareDialog() {
     }
   }
 
+  async function pushBoardThenGoLive(token: string) {
+    // Push the canvas you are looking at so the sync room seeds from this board, not a blank one.
+    await persistCurrentBoard()
+    await flushNow()
+    const sync = useSyncStatus.getState()
+    if (sync.state === 'offline') {
+      throw new Error('Server unreachable. Save the board while online, then try again.')
+    }
+    try {
+      await copyText(shareUrl(token))
+    } catch {
+      /* clipboard may be blocked; URL still opens below */
+    }
+    close()
+    window.location.hash = shareHash(token)
+  }
+
   const create = () =>
     run(async () => {
       await persistCurrentBoard()
       await flushNow()
+      if (useSyncStatus.getState().state === 'offline') {
+        throw new Error('Server unreachable. Save the board while online, then try again.')
+      }
       const link = await createShareLink(boardId, role)
       setFresh((f) => ({ ...f, [link.id]: link.token }))
-      await reload()
+      // Re-push then join so the sync room opens on this board's latest snapshot.
+      await pushBoardThenGoLive(link.token)
     })
 
   const revoke = (id: string) =>
@@ -104,7 +127,7 @@ export function ShareDialog() {
 
   async function copy(id: string, token: string) {
     try {
-      await navigator.clipboard.writeText(shareUrl(token))
+      await copyText(shareUrl(token))
       setCopied(id)
       setTimeout(() => setCopied(null), 1500)
     } catch {
@@ -112,10 +135,10 @@ export function ShareDialog() {
     }
   }
 
-  function openLive(token: string) {
-    close()
-    window.location.hash = shareHash(token)
-  }
+  const openLive = (token: string) =>
+    run(async () => {
+      await pushBoardThenGoLive(token)
+    })
 
   return (
     <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/40 p-4">
@@ -128,8 +151,8 @@ export function ShareDialog() {
           Share board
         </h2>
         <p className="mb-3 text-sm text-[var(--drawai-muted)]">
-          Anyone with a link can join the live board, with the permission you choose. Revoking a
-          link disconnects people using it within a few seconds.
+          Creates a live WebSocket room. You join immediately (link copied), and anyone with the URL
+          sees your cursor and drawing in real time. Revoking disconnects them within a few seconds.
         </p>
 
         <div className="mb-4 flex items-center gap-2">
@@ -149,7 +172,7 @@ export function ShareDialog() {
             disabled={busy || !boardId}
             onClick={() => void create()}
           >
-            {busy ? 'Working…' : 'Create link'}
+            {busy ? 'Working…' : 'Create & go live'}
           </button>
         </div>
 
@@ -199,7 +222,7 @@ export function ShareDialog() {
                       type="button"
                       className="text-[var(--drawai-accent)] disabled:opacity-50"
                       disabled={busy}
-                      onClick={() => openLive(token)}
+                      onClick={() => void openLive(token)}
                     >
                       Open live board
                     </button>

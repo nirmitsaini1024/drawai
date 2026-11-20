@@ -1,0 +1,71 @@
+# DrawAI production-style stack:  docker compose up -d --build
+# Copy .env.example to .env first. DrawAI has NO authentication: keep it on localhost, behind a
+# reverse proxy that handles login, or on a VPN.
+name: drawai
+
+x-db-env: &db-env
+  POSTGRES_USER: ${POSTGRES_USER:-drawai}
+  POSTGRES_DB: ${POSTGRES_DB:-drawai}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      <<: *db-env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  api:
+    build:
+      context: ./server
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-drawai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-drawai}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MODEL: ${MODEL:-deepseek/deepseek-v4.1-flash-1017}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      # nginx sets X-Forwarded-For; trust it so per-IP rate limits see real client IPs.
+      TRUST_PROXY: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  sync:
+    build:
+      context: .
+      dockerfile: sync-server/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-drawai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-drawai}
+      SYNC_PORT: "8787"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy # the API applies the migrations the sync server relies on
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    ports:
+      # Localhost-only by default because there is no auth. Set WEB_BIND=0.0.0.0 only behind a login proxy/VPN.
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+      sync:
+        condition: service_healthy
+
+volumes:
+  pgdata:

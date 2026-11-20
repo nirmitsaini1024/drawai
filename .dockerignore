@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.env
+.env.*
+!.env.example
+server/.venv
+server/.env
+server/__pycache__
+sync-server/.rooms
+backups
+*.log

@@ -52,7 +52,8 @@ export async function runTurnIntoFlowchart(editor: Editor): Promise<SelectionAct
         '(start-end, process, decision, input-output, document). Keep meaning; simplify labels.',
       current,
     })
-    await applyGraphToEditor(editor, graph)
+    // Conversion rewrites the current AI diagram in place.
+    await applyGraphToEditor(editor, graph, { replacePrevious: true })
     return { ok: true, message: 'Converted to flowchart' }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Flowchart conversion failed' }

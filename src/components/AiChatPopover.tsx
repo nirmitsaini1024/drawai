@@ -139,41 +139,73 @@ export function AiChatPopover() {
         <div className="flex items-center gap-1 border-b border-[var(--drawai-border)] p-1.5">
           <ModeTab
             active={mode === 'edit'}
-            disabled={!hasSelection}
+            disabled={!hasSelection || loading}
             onClick={() => setMode('edit')}
             title={hasSelection ? 'Edit the current selection' : 'Select shapes first'}
           >
             Edit selection
           </ModeTab>
-          <ModeTab active={mode === 'generate'} onClick={() => setMode('generate')}>
+          <ModeTab
+            active={mode === 'generate'}
+            disabled={loading}
+            onClick={() => setMode('generate')}
+          >
             Generate new
           </ModeTab>
           <button
             type="button"
-            className="ml-auto rounded-md px-2 py-1 text-xs text-[var(--drawai-muted)] hover:bg-[var(--drawai-bg)]"
+            className="ml-auto rounded-md px-2 py-1 text-xs text-[var(--drawai-muted)] hover:bg-[var(--drawai-bg)] disabled:opacity-40"
             onClick={closeChat}
+            disabled={loading}
             aria-label="Close"
           >
             Esc
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-b border-[var(--drawai-border)] px-3 py-2">
-          {chips.map((chip) => (
-            <button
-              key={chip}
-              type="button"
-              disabled={loading}
-              onClick={() => {
-                setPrompt(chip)
-                void submit(chip)
-              }}
-              className="rounded-full border border-[var(--drawai-border)] px-2 py-0.5 text-[11px] text-[var(--drawai-muted)] hover:border-[var(--drawai-accent)] hover:text-[var(--drawai-accent)] disabled:opacity-50"
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
+        {loading && (
+          <div
+            className="flex items-center gap-2.5 border-b border-[var(--drawai-border)] bg-[var(--drawai-bg)] px-3 py-2.5"
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              className="inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-[var(--drawai-accent)] border-t-transparent"
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-[var(--drawai-accent)]">
+                {mode === 'generate' ? 'Generating diagram…' : 'Applying edits…'}
+              </p>
+              <p className="truncate text-[10px] text-[var(--drawai-muted)]">
+                {prompt.trim() || 'Working with the model'}
+              </p>
+            </div>
+            <span className="flex gap-0.5" aria-hidden>
+              <span className="size-1 animate-pulse rounded-full bg-[var(--drawai-accent)] [animation-delay:0ms]" />
+              <span className="size-1 animate-pulse rounded-full bg-[var(--drawai-accent)] [animation-delay:150ms]" />
+              <span className="size-1 animate-pulse rounded-full bg-[var(--drawai-accent)] [animation-delay:300ms]" />
+            </span>
+          </div>
+        )}
+
+        {!loading && (
+          <div className="flex flex-wrap gap-1.5 border-b border-[var(--drawai-border)] px-3 py-2">
+            {chips.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => {
+                  setPrompt(chip)
+                  void submit(chip)
+                }}
+                className="rounded-full border border-[var(--drawai-border)] px-2 py-0.5 text-[11px] text-[var(--drawai-muted)] hover:border-[var(--drawai-accent)] hover:text-[var(--drawai-accent)]"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
 
         {error && (
           <div className="border-b border-[var(--drawai-border)] px-3 py-2 text-xs text-[var(--drawai-danger)]">
@@ -240,14 +272,30 @@ export function AiChatPopover() {
           />
           <div className="mt-1 flex items-center justify-between gap-2 px-1">
             <span className="text-[10px] text-[var(--drawai-muted)]">
-              Enter send · Shift+Enter newline
+              {loading
+                ? mode === 'generate'
+                  ? 'Hang tight — building your diagram'
+                  : 'Hang tight — editing selection'
+                : 'Enter send · Shift+Enter newline'}
             </span>
             <button
               type="submit"
               disabled={loading || !prompt.trim() || (mode === 'edit' && !hasSelection)}
-              className="rounded-lg bg-[var(--drawai-accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--drawai-accent-hover)] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--drawai-accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--drawai-accent-hover)] disabled:opacity-50"
             >
-              {loading ? 'Working…' : mode === 'edit' ? 'Apply' : 'Generate'}
+              {loading ? (
+                <>
+                  <span
+                    className="inline-block size-3 animate-spin rounded-full border-2 border-white border-t-transparent"
+                    aria-hidden
+                  />
+                  {mode === 'generate' ? 'Generating…' : 'Applying…'}
+                </>
+              ) : mode === 'edit' ? (
+                'Apply'
+              ) : (
+                'Generate'
+              )}
             </button>
           </div>
         </form>

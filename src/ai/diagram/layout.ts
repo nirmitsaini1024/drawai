@@ -72,6 +72,8 @@ export function buildElkGraph(input: LayoutInput, dir: Dir, wrap: boolean): ElkN
         'elk.padding': `[top=${GROUP_METRICS.paddingTop},left=${GROUP_METRICS.paddingSide},bottom=${GROUP_METRICS.paddingBottom},right=${GROUP_METRICS.paddingSide}]`,
         'elk.nodeSize.constraints': 'MINIMUM_SIZE',
         'elk.nodeSize.minimum': `(${Math.ceil(g.minW)},0)`,
+        'elk.spacing.nodeNode': String(SPACING.node),
+        'elk.layered.spacing.nodeNodeBetweenLayers': String(SPACING.layer),
       },
     })
   }

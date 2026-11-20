@@ -90,9 +90,14 @@ export function normalizeGraph(graph: Graph): NormalizedGraph {
     return true
   })
 
-  const edgesIn = (graph.edges ?? []).filter(
-    (e) => seen.has(e.from) && seen.has(e.to) && e.from !== e.to,
-  )
+  const edgeKeys = new Set<string>()
+  const edgesIn = (graph.edges ?? []).filter((e) => {
+    if (!seen.has(e.from) || !seen.has(e.to) || e.from === e.to) return false
+    const key = `${e.from}\u0000${e.to}\u0000${e.label ?? ''}`
+    if (edgeKeys.has(key)) return false
+    edgeKeys.add(key)
+    return true
+  })
   const hasIncoming = new Set(edgesIn.map((e) => e.to))
 
   const groupIds = new Set<string>()

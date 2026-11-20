@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, type DragEvent } from 'react'
 import { Tldraw, type Editor } from 'tldraw'
-import { installDevHooks } from '../ai/devHooks'
 import { insertPresetShape, PRESET_DRAG_MIME } from '../library/insertPreset'
 import { isPresetKind } from '../library/presetKinds'
 import { insertLibraryContent } from '../library/shapeContent'
@@ -37,7 +36,6 @@ export function Canvas() {
   const handleMount = useCallback(
     (ed: Editor) => {
       setEditor(ed)
-      installDevHooks(ed)
       ed.user.updateUserPreferences({ colorScheme: theme })
 
       const unsub = ed.store.listen(

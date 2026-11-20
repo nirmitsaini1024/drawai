@@ -1,7 +1,8 @@
 /**
  * The one diagram pipeline: normalize → measure → ELK layout (worker) → real tldraw shapes +
  * bound elbow arrows → fit. Used by AI generation, Mermaid import, image-to-diagram, edit-selection
- * create/connect ops and "Tidy up".
+ * create/connect ops and "Tidy up". By default appends beside existing shapes; pass
+ * `replacePrevious: true` to swap the prior AI diagram (e.g. turn-into-flowchart).
  */
 import {
   Box,
@@ -73,9 +74,11 @@ export async function computeLayout(
   return snapLayout(raw, GRID)
 }
 
+const APPEND_GAP = GRID * 4
+
 export type PlaceOptions = {
   style?: DiagramStyle
-  /** Delete previously generated AI shapes first (default true). */
+  /** Delete previously generated AI shapes first (default false — append). */
   replacePrevious?: boolean
   /** Fit the camera to the result (default true). */
   zoom?: boolean
@@ -83,9 +86,43 @@ export type PlaceOptions = {
 
 export type PlaceResult = { shapeIds: TLShapeId[]; nodeShapeIds: Map<string, TLShapeId> }
 
+/** Page-space offset so the layout lands at the intended center (or beside existing work). */
+function placementOffset(
+  editor: Editor,
+  layoutBounds: Rect,
+  replacePrevious: boolean,
+  previousIds: TLShapeId[],
+): { dx: number; dy: number } {
+  if (replacePrevious) {
+    const prevBounds = previousIds.length ? editor.getShapesPageBounds(previousIds) : null
+    const center = prevBounds ?? editor.getViewportPageBounds()
+    return {
+      dx: Math.round((center.midX - (layoutBounds.x + layoutBounds.w / 2)) / GRID) * GRID,
+      dy: Math.round((center.midY - (layoutBounds.y + layoutBounds.h / 2)) / GRID) * GRID,
+    }
+  }
+
+  const existingIds = [...editor.getCurrentPageShapeIds()]
+  const pageBounds = existingIds.length ? editor.getShapesPageBounds(existingIds) : null
+  if (!pageBounds) {
+    const center = editor.getViewportPageBounds()
+    return {
+      dx: Math.round((center.midX - (layoutBounds.x + layoutBounds.w / 2)) / GRID) * GRID,
+      dy: Math.round((center.midY - (layoutBounds.y + layoutBounds.h / 2)) / GRID) * GRID,
+    }
+  }
+
+  // Place to the right of existing content so generate / Mermaid don't overlap.
+  return {
+    dx: Math.round((pageBounds.maxX + APPEND_GAP - layoutBounds.x) / GRID) * GRID,
+    dy: Math.round((pageBounds.y - layoutBounds.y) / GRID) * GRID,
+  }
+}
+
 /** Place a full graph on the canvas (one undo step). */
 export async function placeGraph(editor: Editor, graph: Graph, opts: PlaceOptions = {}): Promise<PlaceResult> {
   const style = opts.style ?? useDiagramStyleStore.getState().style
+  const replacePrevious = opts.replacePrevious === true
   const norm = normalizeGraph(graph)
   if (norm.nodes.length === 0) return { shapeIds: [], nodeShapeIds: new Map() }
 
@@ -93,11 +130,8 @@ export async function placeGraph(editor: Editor, graph: Graph, opts: PlaceOption
   const measured = measureDiagram(editor, norm, style)
   const layout = await computeLayout(editor, measured, norm.direction)
 
-  const previous = opts.replacePrevious === false ? [] : listAiShapeIds(editor)
-  const prevBounds = previous.length ? editor.getShapesPageBounds(previous) : null
-  const center = prevBounds ?? editor.getViewportPageBounds()
-  const dx = Math.round((center.midX - (layout.bounds.x + layout.bounds.w / 2)) / GRID) * GRID
-  const dy = Math.round((center.midY - (layout.bounds.y + layout.bounds.h / 2)) / GRID) * GRID
+  const previous = replacePrevious ? listAiShapeIds(editor) : []
+  const { dx, dy } = placementOffset(editor, layout.bounds, replacePrevious, previous)
 
   const result: PlaceResult = { shapeIds: [], nodeShapeIds: new Map() }
   const nodeMeta = (nodeId: string): JsonObject => ({

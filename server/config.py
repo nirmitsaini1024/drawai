@@ -29,6 +29,32 @@ APP_TITLE = os.getenv("OPENROUTER_APP_TITLE", "DrawAI")
 # Reject snapshots larger than this (bytes of serialized JSON).
 MAX_SNAPSHOT_BYTES = int(os.getenv("MAX_SNAPSHOT_BYTES", str(20 * 1024 * 1024)))
 
+# Behind nginx every request comes from the proxy's IP. Only trust
+# X-Forwarded-For when explicitly told we sit behind a trusted proxy.
+TRUST_PROXY = os.getenv("TRUST_PROXY", "0") in ("1", "true", "True", "yes")
+
+# ---- AI guardrails ------------------------------------------------------------
+RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "5"))
+DAILY_LIMIT = int(os.getenv("DAILY_LIMIT", "100"))
+MAX_CONCURRENT_PER_CLIENT = int(os.getenv("MAX_CONCURRENT_PER_CLIENT", "1"))
+GLOBAL_RATE_LIMIT_PER_MINUTE = int(os.getenv("GLOBAL_RATE_LIMIT_PER_MINUTE", "60"))
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+
+MAX_PROMPT_CHARS = int(os.getenv("MAX_PROMPT_CHARS", "800"))
+MAX_SELECTION_SHAPES = int(os.getenv("MAX_SELECTION_SHAPES", "150"))
+MAX_SELECTION_JSON_BYTES = int(os.getenv("MAX_SELECTION_JSON_BYTES", str(200 * 1024)))
+MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(5 * 1024 * 1024)))
+
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "2048"))
+LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "60"))
+LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+
+# Salt for hashing client IPs in logs (not a secret for auth — just privacy).
+CLIENT_HASH_SALT = os.getenv("CLIENT_HASH_SALT", "drawai-guardrails")
+
+# Protects GET /api/stats/guardrails. Unset → endpoint returns 404.
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
+
 
 def allowed_origins() -> list[str]:
     return [o.strip() for o in WEB_ORIGIN.split(",") if o.strip()]

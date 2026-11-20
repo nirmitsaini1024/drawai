@@ -4,6 +4,9 @@ import { useSyncStatus } from '../lib/syncStatus'
 import { useAppStore } from '../store/appStore'
 import { useLibraryStore } from '../store/libraryStore'
 import { useUiStore } from '../store/uiStore'
+import { useDiagramStyleStore } from '../store/diagramStyleStore'
+import { applyDiagramStyle } from '../ai/diagram/style'
+import { tidySelection } from '../ai/diagram/tidy'
 import { ExportMenu } from './ExportMenu'
 
 type CollabInfo = { token: string; roomId: string | null; readonly: boolean }
@@ -30,6 +33,10 @@ export function TopBar({ collab }: { collab: CollabInfo | null }) {
   const setLibraryOpen = useLibraryStore((s) => s.setPanelOpen)
   const openCommandPalette = useUiStore((s) => s.openCommandPalette)
   const openShareDialog = useUiStore((s) => s.openShareDialog)
+
+  const diagramStyle = useDiagramStyleStore((s) => s.style)
+  const setDiagramStyle = useDiagramStyleStore((s) => s.setStyle)
+  const editor = useAppStore((s) => s.editor)
 
   const board = getActiveBoard()
   const [name, setName] = useState(board?.name ?? 'Untitled')
@@ -211,6 +218,29 @@ export function TopBar({ collab }: { collab: CollabInfo | null }) {
         title="Snap to grid (Ctrl/Cmd+Shift+')"
       >
         Snap
+      </button>
+
+      <button
+        type="button"
+        className="hidden rounded-md border border-[var(--drawai-border)] px-2.5 py-1.5 text-sm hover:bg-[var(--drawai-bg)] md:inline"
+        onClick={() => {
+          const next = diagramStyle === 'clean' ? 'sketch' : 'clean'
+          setDiagramStyle(next)
+          if (editor) applyDiagramStyle(editor, next)
+        }}
+        title="Diagram style: Clean or Sketch (applies to selected or all diagram shapes)"
+      >
+        {diagramStyle === 'clean' ? 'Clean' : 'Sketch'}
+      </button>
+
+      <button
+        type="button"
+        className="hidden rounded-md border border-[var(--drawai-border)] px-2.5 py-1.5 text-sm hover:bg-[var(--drawai-bg)] md:inline disabled:opacity-50"
+        disabled={!editor}
+        onClick={() => editor && void tidySelection(editor)}
+        title="Tidy up: re-layout selected (or all) diagram nodes, no AI call"
+      >
+        Tidy up
       </button>
 
       <label className="hidden items-center gap-1 text-sm text-[var(--drawai-muted)] md:flex" title="Grid style">

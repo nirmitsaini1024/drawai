@@ -99,7 +99,7 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
 
     try {
       if (mode === 'generate') {
-        // Fresh generate — do not send current graph
+        // Fresh generate — append beside existing work; do not send current graph
         const graph = await requestDiagram({ prompt })
         await applyGraphToEditor(editor, graph)
         set({ lastGraph: graph, loading: false, prompt: '' })

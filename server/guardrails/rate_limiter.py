@@ -7,6 +7,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from collections.abc import Callable
 from typing import Deque
 
 import config
@@ -58,7 +59,7 @@ class InMemoryRateLimiter(RateLimiter):
         daily: int | None = None,
         max_concurrent: int | None = None,
         global_per_minute: int | None = None,
-        clock: callable | None = None,
+        clock: Callable[[], float] | None = None,
     ) -> None:
         self.per_minute = per_minute if per_minute is not None else config.RATE_LIMIT_PER_MINUTE
         self.daily = daily if daily is not None else config.DAILY_LIMIT

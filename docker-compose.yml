@@ -35,6 +35,18 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       # nginx sets X-Forwarded-For; trust it so per-IP rate limits see real client IPs.
       TRUST_PROXY: "1"
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-5}
+      DAILY_LIMIT: ${DAILY_LIMIT:-100}
+      MAX_CONCURRENT_PER_CLIENT: ${MAX_CONCURRENT_PER_CLIENT:-1}
+      GLOBAL_RATE_LIMIT_PER_MINUTE: ${GLOBAL_RATE_LIMIT_PER_MINUTE:-60}
+      MAX_PROMPT_CHARS: ${MAX_PROMPT_CHARS:-800}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-2048}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.2}
+      CLIENT_HASH_SALT: ${CLIENT_HASH_SALT:-drawai-guardrails}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      # Optional: set REDIS_URL in .env to share rate limits across API replicas.
+      REDIS_URL: ${REDIS_URL:-}
     depends_on:
       postgres:
         condition: service_healthy

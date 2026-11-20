@@ -155,7 +155,7 @@ export const EDIT_QUICK_ACTIONS = [
 
 export type ImageDiagramRequest = {
   image_base64: string
-  media_type: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
+  media_type: 'image/png' | 'image/jpeg' | 'image/webp'
   prompt?: string
 }
 
@@ -172,4 +172,6 @@ export type ExplainRequest = {
 
 export type TextResponse = {
   text: string
+  refused?: boolean
+  message?: string
 }

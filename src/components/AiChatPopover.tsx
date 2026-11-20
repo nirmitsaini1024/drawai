@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useEditor, useValue } from 'tldraw'
 import { EDIT_QUICK_ACTIONS } from '../ai/types'
+import { MAX_PROMPT_CHARS, REFUSAL_EXAMPLES } from '../ai/guardrails'
 import { useAiChatStore, type AiChatMode } from '../store/aiChatStore'
+import { useAiRateLimitStore } from '../store/aiRateLimitStore'
 
 const GENERATE_CHIPS = [
   '3-tier web app with cache',
@@ -19,6 +21,8 @@ export function AiChatPopover() {
   const setPrompt = useAiChatStore((s) => s.setPrompt)
   const loading = useAiChatStore((s) => s.loading)
   const error = useAiChatStore((s) => s.error)
+  const refusal = useAiChatStore((s) => s.refusal)
+  const clearRefusal = useAiChatStore((s) => s.clearRefusal)
   const previewMark = useAiChatStore((s) => s.previewMark)
   const previewSummary = useAiChatStore((s) => s.previewSummary)
   const previewOps = useAiChatStore((s) => s.previewOps)
@@ -28,8 +32,16 @@ export function AiChatPopover() {
   const rejectPreview = useAiChatStore((s) => s.rejectPreview)
   const submit = useAiChatStore((s) => s.submit)
 
+  const remaining = useAiRateLimitStore((s) => s.remaining)
+  const limit = useAiRateLimitStore((s) => s.limit)
+  const retryUntil = useAiRateLimitStore((s) => s.retryUntil)
+  const clearRetry = useAiRateLimitStore((s) => s.clearRetry)
+  const canSubmitRate = useAiRateLimitStore((s) => s.canSubmit)
+  const secondsUntilRetry = useAiRateLimitStore((s) => s.secondsUntilRetry)
+
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number; anchored: boolean } | null>(null)
+  const [countdown, setCountdown] = useState(0)
 
   const selectedCount = useValue(
     'ai-chat-selected-count',
@@ -43,6 +55,17 @@ export function AiChatPopover() {
   )
 
   const hasSelection = selectedCount > 0
+
+  useEffect(() => {
+    const tick = () => {
+      const secs = secondsUntilRetry()
+      setCountdown(secs)
+      if (secs <= 0 && retryUntil) clearRetry()
+    }
+    tick()
+    const id = window.setInterval(tick, 250)
+    return () => window.clearInterval(id)
+  }, [retryUntil, secondsUntilRetry, clearRetry])
 
   useLayoutEffect(() => {
     if (!open || !editor) {
@@ -65,7 +88,6 @@ export function AiChatPopover() {
       return
     }
 
-    // Generate mode — float near bottom-center of viewport (Cursor-like)
     setPos({
       left: container.width / 2,
       top: Math.max(80, container.height - 220),
@@ -92,7 +114,6 @@ export function AiChatPopover() {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [open, closeChat])
 
-  // Floating "Ask AI" chip under selection when closed
   if (!open) {
     if (!hasSelection || !selectionBounds || !editor) return null
     const container = editor.getContainer().getBoundingClientRect()
@@ -124,6 +145,9 @@ export function AiChatPopover() {
 
   const hasPreview = !!previewMark && previewOps.length > 0
   const chips = mode === 'edit' ? EDIT_QUICK_ACTIONS : GENERATE_CHIPS
+  const rateBlocked = countdown > 0 || !canSubmitRate()
+  const submitDisabled =
+    loading || rateBlocked || !prompt.trim() || (mode === 'edit' && !hasSelection)
 
   return (
     <div
@@ -139,77 +163,71 @@ export function AiChatPopover() {
         <div className="flex items-center gap-1 border-b border-[var(--drawai-border)] p-1.5">
           <ModeTab
             active={mode === 'edit'}
-            disabled={!hasSelection || loading}
+            disabled={!hasSelection}
             onClick={() => setMode('edit')}
             title={hasSelection ? 'Edit the current selection' : 'Select shapes first'}
           >
             Edit selection
           </ModeTab>
-          <ModeTab
-            active={mode === 'generate'}
-            disabled={loading}
-            onClick={() => setMode('generate')}
-          >
+          <ModeTab active={mode === 'generate'} onClick={() => setMode('generate')}>
             Generate new
           </ModeTab>
           <button
             type="button"
-            className="ml-auto rounded-md px-2 py-1 text-xs text-[var(--drawai-muted)] hover:bg-[var(--drawai-bg)] disabled:opacity-40"
+            className="ml-auto rounded-md px-2 py-1 text-xs text-[var(--drawai-muted)] hover:bg-[var(--drawai-bg)]"
             onClick={closeChat}
-            disabled={loading}
             aria-label="Close"
           >
             Esc
           </button>
         </div>
 
-        {loading && (
+        <div className="flex flex-wrap gap-1.5 border-b border-[var(--drawai-border)] px-3 py-2">
+          {chips.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              disabled={loading || rateBlocked}
+              onClick={() => {
+                setPrompt(chip)
+                void submit(chip)
+              }}
+              className="rounded-full border border-[var(--drawai-border)] px-2 py-0.5 text-[11px] text-[var(--drawai-muted)] hover:border-[var(--drawai-accent)] hover:text-[var(--drawai-accent)] disabled:opacity-50"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+
+        {refusal && (
           <div
-            className="flex items-center gap-2.5 border-b border-[var(--drawai-border)] bg-[var(--drawai-bg)] px-3 py-2.5"
+            className="border-b border-[var(--drawai-border)] bg-[var(--drawai-bg)] px-3 py-2 text-xs text-[var(--drawai-text)]"
             role="status"
-            aria-live="polite"
           >
-            <span
-              className="inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-[var(--drawai-accent)] border-t-transparent"
-              aria-hidden
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-[var(--drawai-accent)]">
-                {mode === 'generate' ? 'Generating diagram…' : 'Applying edits…'}
-              </p>
-              <p className="truncate text-[10px] text-[var(--drawai-muted)]">
-                {prompt.trim() || 'Working with the model'}
-              </p>
+            <p className="mb-1.5">I can only create and edit diagrams. Try:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {REFUSAL_EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  type="button"
+                  disabled={loading || rateBlocked}
+                  onClick={() => {
+                    clearRefusal()
+                    setPrompt(ex)
+                    void submit(ex)
+                  }}
+                  className="rounded-full border border-[var(--drawai-border)] bg-[var(--drawai-surface)] px-2 py-0.5 text-[11px] hover:border-[var(--drawai-accent)] hover:text-[var(--drawai-accent)] disabled:opacity-50"
+                >
+                  {ex}
+                </button>
+              ))}
             </div>
-            <span className="flex gap-0.5" aria-hidden>
-              <span className="size-1 animate-pulse rounded-full bg-[var(--drawai-accent)] [animation-delay:0ms]" />
-              <span className="size-1 animate-pulse rounded-full bg-[var(--drawai-accent)] [animation-delay:150ms]" />
-              <span className="size-1 animate-pulse rounded-full bg-[var(--drawai-accent)] [animation-delay:300ms]" />
-            </span>
           </div>
         )}
 
-        {!loading && (
-          <div className="flex flex-wrap gap-1.5 border-b border-[var(--drawai-border)] px-3 py-2">
-            {chips.map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                onClick={() => {
-                  setPrompt(chip)
-                  void submit(chip)
-                }}
-                className="rounded-full border border-[var(--drawai-border)] px-2 py-0.5 text-[11px] text-[var(--drawai-muted)] hover:border-[var(--drawai-accent)] hover:text-[var(--drawai-accent)]"
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {error && (
+        {error && !refusal && (
           <div className="border-b border-[var(--drawai-border)] px-3 py-2 text-xs text-[var(--drawai-danger)]">
-            {error}
+            {countdown > 0 ? `Try again in ${countdown}s` : error}
           </div>
         )}
 
@@ -244,6 +262,7 @@ export function AiChatPopover() {
           className="p-2"
           onSubmit={(e) => {
             e.preventDefault()
+            if (submitDisabled) return
             void submit()
           }}
         >
@@ -251,7 +270,8 @@ export function AiChatPopover() {
             ref={inputRef}
             value={prompt}
             rows={2}
-            disabled={loading}
+            maxLength={MAX_PROMPT_CHARS}
+            disabled={loading || rateBlocked}
             placeholder={
               mode === 'edit'
                 ? 'Ask AI to change the selection…'
@@ -261,7 +281,7 @@ export function AiChatPopover() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                void submit()
+                if (!submitDisabled) void submit()
               }
               if (e.key === 'Escape') {
                 e.preventDefault()
@@ -272,30 +292,22 @@ export function AiChatPopover() {
           />
           <div className="mt-1 flex items-center justify-between gap-2 px-1">
             <span className="text-[10px] text-[var(--drawai-muted)]">
-              {loading
-                ? mode === 'generate'
-                  ? 'Hang tight — building your diagram'
-                  : 'Hang tight — editing selection'
-                : 'Enter send · Shift+Enter newline'}
+              {prompt.length}/{MAX_PROMPT_CHARS}
+              {remaining != null ? ` · ${remaining} of ${limit} left this minute` : ''}
+              {countdown > 0 ? ` · Try again in ${countdown}s` : ' · Enter send'}
             </span>
             <button
               type="submit"
-              disabled={loading || !prompt.trim() || (mode === 'edit' && !hasSelection)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--drawai-accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--drawai-accent-hover)] disabled:opacity-50"
+              disabled={submitDisabled}
+              className="rounded-lg bg-[var(--drawai-accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--drawai-accent-hover)] disabled:opacity-50"
             >
-              {loading ? (
-                <>
-                  <span
-                    className="inline-block size-3 animate-spin rounded-full border-2 border-white border-t-transparent"
-                    aria-hidden
-                  />
-                  {mode === 'generate' ? 'Generating…' : 'Applying…'}
-                </>
-              ) : mode === 'edit' ? (
-                'Apply'
-              ) : (
-                'Generate'
-              )}
+              {loading
+                ? 'Working…'
+                : countdown > 0
+                  ? `Wait ${countdown}s`
+                  : mode === 'edit'
+                    ? 'Apply'
+                    : 'Generate'}
             </button>
           </div>
         </form>

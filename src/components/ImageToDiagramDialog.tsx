@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { applyGraphToEditor } from '../ai/applyGraph'
-import { requestDiagramFromImage } from '../ai/api'
+import { AiRateLimitError, AiRefusalError, requestDiagramFromImage } from '../ai/api'
+import { formatRefusalMessage, MAX_PROMPT_CHARS, REFUSAL_EXAMPLES } from '../ai/guardrails'
 import { useAppStore } from '../store/appStore'
 import { useAiChatStore } from '../store/aiChatStore'
+import { useAiRateLimitStore } from '../store/aiRateLimitStore'
 import { useUiStore } from '../store/uiStore'
 
 function fileToBase64(file: File): Promise<{ base64: string; mediaType: string }> {
@@ -26,6 +28,9 @@ export function ImageToDiagramDialog() {
   const open = useUiStore((s) => s.imageDialogOpen)
   const close = useUiStore((s) => s.closeImageDialog)
   const editor = useAppStore((s) => s.editor)
+  const canSubmit = useAiRateLimitStore((s) => s.canSubmit)
+  const secondsUntilRetry = useAiRateLimitStore((s) => s.secondsUntilRetry)
+  const noteClientSubmit = useAiRateLimitStore((s) => s.noteClientSubmit)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const [prompt, setPrompt] = useState('Convert this sketch into a clear diagram.')
@@ -33,6 +38,8 @@ export function ImageToDiagramDialog() {
   const [fileMeta, setFileMeta] = useState<{ base64: string; mediaType: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [refusal, setRefusal] = useState<string | null>(null)
+  const [countdown, setCountdown] = useState(0)
 
   useEffect(() => {
     if (!open) return
@@ -41,23 +48,30 @@ export function ImageToDiagramDialog() {
     setFileMeta(null)
     setBusy(false)
     setError(null)
+    setRefusal(null)
   }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const id = window.setInterval(() => setCountdown(secondsUntilRetry()), 250)
+    return () => window.clearInterval(id)
+  }, [open, secondsUntilRetry])
 
   if (!open) return null
 
   async function onFile(file: File | undefined) {
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      setError('Choose a PNG, JPEG, WebP, or GIF image')
+      setError('Choose a PNG, JPEG, or WebP image')
       return
     }
-    if (file.size > 4_000_000) {
-      setError('Image must be under 4MB')
+    if (file.size > 5_000_000) {
+      setError('Image must be under 5MB')
       return
     }
     try {
       const meta = await fileToBase64(file)
-      const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+      const allowed = ['image/png', 'image/jpeg', 'image/webp']
       if (!allowed.includes(meta.mediaType)) {
         setError('Unsupported image type')
         return
@@ -75,22 +89,41 @@ export function ImageToDiagramDialog() {
       setError('Pick an image first')
       return
     }
+    if (busy) return
+    if (!canSubmit()) {
+      setError(`Try again in ${secondsUntilRetry()}s`)
+      return
+    }
     setBusy(true)
     setError(null)
+    setRefusal(null)
+    noteClientSubmit()
     try {
       const graph = await requestDiagramFromImage({
         image_base64: fileMeta.base64,
-        media_type: fileMeta.mediaType as 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif',
-        prompt: prompt.trim() || undefined,
+        media_type: fileMeta.mediaType as 'image/png' | 'image/jpeg' | 'image/webp',
+        prompt: prompt.trim().slice(0, MAX_PROMPT_CHARS) || undefined,
       })
       await applyGraphToEditor(editor, graph)
       useAiChatStore.setState({ lastGraph: graph })
       close()
     } catch (err) {
+      if (err instanceof AiRefusalError) {
+        setRefusal(formatRefusalMessage(err.message))
+        setBusy(false)
+        return
+      }
+      if (err instanceof AiRateLimitError) {
+        setError(`Try again in ${err.retryAfterSeconds}s`)
+        setBusy(false)
+        return
+      }
       setError(err instanceof Error ? err.message : 'Conversion failed')
       setBusy(false)
     }
   }
+
+  const blocked = busy || countdown > 0 || !canSubmit()
 
   return (
     <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/40 p-4">
@@ -109,7 +142,7 @@ export function ImageToDiagramDialog() {
         <input
           ref={inputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
+          accept="image/png,image/jpeg,image/webp"
           className="hidden"
           onChange={(e) => void onFile(e.target.files?.[0])}
         />
@@ -134,10 +167,32 @@ export function ImageToDiagramDialog() {
           <span className="mb-1 block text-[var(--drawai-muted)]">Optional hint</span>
           <input
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            maxLength={MAX_PROMPT_CHARS}
+            onChange={(e) => setPrompt(e.target.value.slice(0, MAX_PROMPT_CHARS))}
             className="w-full rounded-md border border-[var(--drawai-border)] bg-transparent px-2 py-1.5 outline-none focus:border-[var(--drawai-accent)]"
           />
+          <span className="mt-1 block text-[10px] text-[var(--drawai-muted)]">
+            {prompt.length}/{MAX_PROMPT_CHARS}
+          </span>
         </label>
+
+        {refusal && (
+          <div className="mb-3 rounded-md bg-[var(--drawai-bg)] px-3 py-2 text-xs" role="status">
+            <p className="mb-1.5">I can only create and edit diagrams. Try:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {REFUSAL_EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  type="button"
+                  className="rounded-full border border-[var(--drawai-border)] px-2 py-0.5 text-[11px]"
+                  onClick={() => setPrompt(ex)}
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && <p className="mb-3 text-sm text-[var(--drawai-danger)]">{error}</p>}
 
@@ -153,10 +208,10 @@ export function ImageToDiagramDialog() {
           <button
             type="button"
             className="rounded-md bg-[var(--drawai-accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--drawai-accent-hover)] disabled:opacity-50"
-            disabled={busy || !fileMeta}
+            disabled={blocked || !fileMeta}
             onClick={() => void onConvert()}
           >
-            {busy ? 'Converting…' : 'Convert'}
+            {busy ? 'Converting…' : countdown > 0 ? `Wait ${countdown}s` : 'Convert'}
           </button>
         </div>
       </div>

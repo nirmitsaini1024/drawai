@@ -1,9 +1,11 @@
 import { createShapeId, toRichText, type Editor } from 'tldraw'
-import { requestDiagram, requestExplain } from './api'
+import { AiRateLimitError, AiRefusalError, requestDiagram, requestExplain } from './api'
 import { applyGraphToEditor } from './applyGraph'
 import { tidySelection } from './diagram/tidy'
 import { extractCurrentGraph } from './extractGraph'
 import { extractSelectionPayload, selectionImageBase64 } from './extractSelection'
+import { formatRefusalMessage } from './guardrails'
+import { useAiRateLimitStore } from '../store/aiRateLimitStore'
 
 export type SelectionActionResult =
   | { ok: true; message?: string }
@@ -19,12 +21,34 @@ async function selectionContext(editor: Editor) {
   return { ...payload, image_base64 }
 }
 
+function guardRate(): SelectionActionResult | null {
+  const rate = useAiRateLimitStore.getState()
+  if (!rate.canSubmit()) {
+    const secs = rate.secondsUntilRetry()
+    return { ok: false, error: secs > 0 ? `Try again in ${secs}s` : 'Please wait a moment' }
+  }
+  rate.noteClientSubmit()
+  return null
+}
+
+function mapAiError(err: unknown, fallback: string): SelectionActionResult {
+  if (err instanceof AiRefusalError) {
+    return { ok: false, error: formatRefusalMessage(err.message) }
+  }
+  if (err instanceof AiRateLimitError) {
+    return { ok: false, error: `Try again in ${err.retryAfterSeconds}s` }
+  }
+  return { ok: false, error: err instanceof Error ? err.message : fallback }
+}
+
 /** Tidy up: ELK re-layout of the selection, entirely local (no LLM call). */
 export function runCleanUpLayout(editor: Editor): Promise<SelectionActionResult> {
   return tidySelection(editor)
 }
 
 export async function runExplainThis(editor: Editor): Promise<SelectionActionResult & { text?: string }> {
+  const blocked = guardRate()
+  if (blocked) return blocked
   const ctx = await selectionContext(editor)
   if (!ctx) return { ok: false, error: 'Select shapes to explain' }
   try {
@@ -36,11 +60,13 @@ export async function runExplainThis(editor: Editor): Promise<SelectionActionRes
     })
     return { ok: true, text, message: 'Explanation ready' }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Explain failed' }
+    return mapAiError(err, 'Explain failed')
   }
 }
 
 export async function runTurnIntoFlowchart(editor: Editor): Promise<SelectionActionResult> {
+  const blocked = guardRate()
+  if (blocked) return blocked
   const current = extractCurrentGraph(editor)
   if (!current || current.nodes.length === 0) {
     return { ok: false, error: 'Select diagram shapes (or generate one first)' }
@@ -52,15 +78,16 @@ export async function runTurnIntoFlowchart(editor: Editor): Promise<SelectionAct
         '(start-end, process, decision, input-output, document). Keep meaning; simplify labels.',
       current,
     })
-    // Conversion rewrites the current AI diagram in place.
-    await applyGraphToEditor(editor, graph, { replacePrevious: true })
+    await applyGraphToEditor(editor, graph)
     return { ok: true, message: 'Converted to flowchart' }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Flowchart conversion failed' }
+    return mapAiError(err, 'Flowchart conversion failed')
   }
 }
 
 export async function runSummarizeAsSticky(editor: Editor): Promise<SelectionActionResult> {
+  const blocked = guardRate()
+  if (blocked) return blocked
   const ctx = await selectionContext(editor)
   if (!ctx) return { ok: false, error: 'Select shapes to summarize' }
   try {
@@ -93,6 +120,6 @@ export async function runSummarizeAsSticky(editor: Editor): Promise<SelectionAct
 
     return { ok: true, message: 'Sticky note added' }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Summarize failed' }
+    return mapAiError(err, 'Summarize failed')
   }
 }

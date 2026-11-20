@@ -42,8 +42,34 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 | `WEB_ORIGIN` | api | Comma-separated browser origins allowed by CORS |
 | `WEB_PORT` / `WEB_BIND` | compose | Published port / bind address of the web container |
 | `TRUST_PROXY` | api | `1` behind nginx so per-IP rate limits use `X-Forwarded-For` (set by compose) |
+| `RATE_LIMIT_PER_MINUTE` | api | AI requests per client per minute (default `5`, shared across all AI routes) |
+| `DAILY_LIMIT` | api | AI requests per client per UTC day (default `100`) |
+| `MAX_CONCURRENT_PER_CLIENT` | api | In-flight AI calls per client (default `1`) |
+| `GLOBAL_RATE_LIMIT_PER_MINUTE` | api | All-clients AI cap per minute (default `60`) |
+| `REDIS_URL` | api | Optional Redis for shared rate limits; unset = in-memory |
+| `MAX_PROMPT_CHARS` | api | Max prompt length (default `800`) |
+| `LLM_MAX_TOKENS` / `LLM_TIMEOUT_SECONDS` / `LLM_TEMPERATURE` | api | Model call bounds (defaults `2048` / `60` / `0.2`) |
+| `CLIENT_HASH_SALT` | api | Salt for hashing IPs in guardrail logs |
+| `ADMIN_TOKEN` | api | Bearer/X-Admin-Token for `GET /api/stats/guardrails` (unset → 404) |
 | `MAX_SNAPSHOT_BYTES` | api | Snapshot size limit (default 20 MB) |
 | `VITE_API_BASE_URL` / `VITE_SYNC_WS_URL` | web build/dev | Unset = local defaults; **empty** = same origin (Docker build) |
+
+### AI guardrails
+
+DrawAI has no login, so AI abuse controls are IP-based (easy to swap for a user id later in `server/identity.py`).
+
+1. **Rate limits (authoritative on the server)** — sliding window of `RATE_LIMIT_PER_MINUTE` (default 5 / 60s) per client, shared across `/api/diagram`, `/api/edit`, `/api/diagram/from-image`, `/api/mermaid` (LLM path), and `/api/explain`. Also: one in-flight call per client, a daily cap, and a global per-minute budget. Over limit → `429` with `{error:"rate_limited", retry_after_seconds}` and `Retry-After` / `X-RateLimit-*` headers. Invalid/oversized input rejected before the LLM does **not** count; calls that reach the model **do** count (even if refused as off-topic).
+2. **Cheap input checks** — trim/normalize prompts, max length, selection size caps, image magic-byte checks (PNG/JPEG/WebP ≤ 5 MB), and a small blocklist file (`server/guardrails/blocklist.py`) for blatant “ignore instructions / dump prompt” abuse.
+3. **Scope in the model** — forced tool/function output only (no free-text chat). Every tool schema includes `in_scope` + `refusal_reason`. Off-topic → HTTP 200 `{refused:true, message}` and nothing is drawn. Board labels/images/Mermaid are treated as untrusted data.
+4. **Output sanitization** — labels ≤ 60 chars / 8 words, no URLs/HTML/markdown; cap 40 nodes / 50 ops; one schema retry on bad JSON.
+5. **Frontend** — shared rate-limit state for generate + edit, countdown on 429, soft “N of 5 left” hint, refusal chips, character counter, client-side cooldown (not security).
+6. **Logging / stats** — metadata only (`drawai.guardrails` logger). Counters at `GET /api/stats/guardrails` when `ADMIN_TOKEN` is set.
+
+Eval the live model against labeled prompts:
+
+```bash
+server/.venv/bin/python scripts/eval_guardrails.py
+```
 
 ### Migrations
 
@@ -105,7 +131,9 @@ npm run dev                        # http://localhost:5173
 | `npm run sync:kinds` | Copy preset kinds JSON → `server/`       |
 | `npm run test:sync`  | Sync-server tests (view-only enforcement, token auth, revocation) |
 | `npm run import:rooms` | Import legacy `sync-server/.rooms/*.json` into Postgres |
-| `cd server && .venv/bin/python -m pytest` | API tests (board CRUD, 409 conflicts, library, share links) |
+| `cd server && .venv/bin/python -m pytest` | API tests (boards, share, AI guardrails) |
+| `server/.venv/bin/python scripts/eval_guardrails.py` | Live-model scope eval (~60 labeled prompts) |
+| `npm test` | Frontend unit tests (incl. AI rate-limit / refusal helpers) |
 
 ## How persistence works
 

@@ -25,9 +25,9 @@ SERVER = ROOT / "server"
 sys.path.insert(0, str(SERVER))
 
 from guardrails.blocklist import matches_blocklist  # noqa: E402
-from guardrails.pipeline import call_tool_once  # noqa: E402
+from guardrails.pipeline import call_tool_with_retry  # noqa: E402
 from guardrails.prompts import DIAGRAM_STYLE_GUIDE, DIAGRAM_SYSTEM  # noqa: E402
-from models import tool_input_schema  # noqa: E402
+from models import sanitize_graph, tool_input_schema  # noqa: E402
 
 
 def load_prompts(path: Path) -> list[dict]:
@@ -41,21 +41,31 @@ def classify_with_model(prompt: str) -> tuple[bool, str]:
         return False, "blocklist"
     user = (
         "Create a clear architecture/flowchart diagram for this request.\n"
+        "Keep the diagram compact (about 6–12 nodes) so the tool JSON stays valid.\n"
         f"Request: {prompt}\n\n"
         f"{DIAGRAM_STYLE_GUIDE}"
     )
-    args, _, _ = call_tool_once(
+
+    def _validate(args: dict) -> None:
+        sanitize_graph(args)
+
+    args, _, _ = call_tool_with_retry(
         system=DIAGRAM_SYSTEM,
         messages=[{"role": "user", "content": user}],
         tool_name="draw_diagram",
         tool_description="Emit a structured diagram graph for DrawAI, or refuse if out of scope.",
         parameters=tool_input_schema(),
-        max_tokens=1024,
+        max_tokens=3072,
+        validate=_validate,
     )
+    graph = sanitize_graph(args)
+    if graph.in_scope is False:
+        return False, str(graph.refusal_reason or args.get("refusal_reason") or "")
     in_scope = bool(args.get("in_scope", True))
-    nodes = args.get("nodes") or []
+    nodes = graph.nodes
     if in_scope and not nodes:
-        in_scope = False
+        # Truncated / empty graph — treat as model failure for scoring via exception path
+        raise ValueError("in_scope=true but no nodes after sanitize")
     reason = str(args.get("refusal_reason") or "")
     return in_scope, reason
 

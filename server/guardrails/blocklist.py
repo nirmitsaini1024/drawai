@@ -16,6 +16,11 @@ BLOCKLIST_PATTERNS: list[re.Pattern[str]] = [
         r"\b(print|dump|show|reveal)\b.{0,30}\b(env|environment|api\s*keys?|OPENROUTER|secrets?)\b",
         r"\b(what|tell me)\s+(is|are)\s+your\s+(system\s+)?(prompt|instructions|rules)\b",
         r"\boverride\s+(your|the)\s+(rules|instructions|guardrails)\b",
+        # Blatant non-diagram chit-chat (still backed by model scope checks).
+        r"^(tell me |say )?a joke\b",
+        r"\btell me a joke\b",
+        r"\bare you (chatgpt|claude|an?\s+ai|a language model)\b",
+        r"\bshow me the api keys?\b",
     ]
 ]
 

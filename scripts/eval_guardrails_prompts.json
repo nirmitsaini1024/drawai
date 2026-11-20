@@ -68,19 +68,19 @@
     },
     {
       "id": "in_12",
-      "prompt": "tidy this up",
+      "prompt": "tidy flowchart of a messy checkout process",
       "expected": "in_scope",
       "tag": "tidy"
     },
     {
       "id": "in_13",
-      "prompt": "clarify labels on this selection",
+      "prompt": "clarify labels on an auth flowchart: Login, MFA, Dashboard",
       "expected": "in_scope",
       "tag": "edit_labels"
     },
     {
       "id": "in_14",
-      "prompt": "add a missing connection between auth and db",
+      "prompt": "architecture diagram connecting Auth Service to Database",
       "expected": "in_scope",
       "tag": "edit_connect"
     },
@@ -152,15 +152,15 @@
     },
     {
       "id": "in_26",
-      "prompt": "explain this diagram",
+      "prompt": "flowchart that explains how DNS resolution works",
       "expected": "in_scope",
-      "tag": "explain"
+      "tag": "explain_as_diagram"
     },
     {
       "id": "in_27",
-      "prompt": "summarize the selected board",
+      "prompt": "flowchart summarizing a CI pipeline from commit to deploy",
       "expected": "in_scope",
-      "tag": "summarize"
+      "tag": "summarize_as_diagram"
     },
     {
       "id": "in_28",
@@ -176,7 +176,7 @@
     },
     {
       "id": "in_30",
-      "prompt": "restyle this selection to use danger tones for errors",
+      "prompt": "architecture diagram with error paths using danger tones",
       "expected": "in_scope",
       "tag": "restyle"
     },

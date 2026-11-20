@@ -1,0 +1,198 @@
+{
+  "kinds": [
+    "rect",
+    "rounded-rect",
+    "ellipse",
+    "diamond",
+    "cloud",
+    "hexagon",
+    "note",
+    "database",
+    "server",
+    "queue",
+    "cache",
+    "api-gateway",
+    "load-balancer",
+    "person",
+    "browser",
+    "mobile",
+    "firewall",
+    "ec2",
+    "s3",
+    "lambda",
+    "rds",
+    "dynamodb",
+    "sqs",
+    "sns",
+    "cloudfront",
+    "aws-api-gateway",
+    "vpc",
+    "start-end",
+    "process",
+    "decision",
+    "input-output",
+    "document"
+  ],
+  "presets": [
+    {
+      "kind": "rect",
+      "label": "Rectangle",
+      "category": "Basic"
+    },
+    {
+      "kind": "rounded-rect",
+      "label": "Rounded rect",
+      "category": "Basic"
+    },
+    {
+      "kind": "ellipse",
+      "label": "Ellipse",
+      "category": "Basic"
+    },
+    {
+      "kind": "diamond",
+      "label": "Diamond",
+      "category": "Basic"
+    },
+    {
+      "kind": "cloud",
+      "label": "Cloud",
+      "category": "Basic"
+    },
+    {
+      "kind": "hexagon",
+      "label": "Hexagon",
+      "category": "Basic"
+    },
+    {
+      "kind": "note",
+      "label": "Note",
+      "category": "Basic"
+    },
+    {
+      "kind": "database",
+      "label": "Database",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "server",
+      "label": "Server",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "queue",
+      "label": "Queue",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "cache",
+      "label": "Cache",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "api-gateway",
+      "label": "API gateway",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "load-balancer",
+      "label": "Load balancer",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "person",
+      "label": "Person",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "browser",
+      "label": "Browser",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "mobile",
+      "label": "Mobile",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "firewall",
+      "label": "Firewall",
+      "category": "Infrastructure"
+    },
+    {
+      "kind": "ec2",
+      "label": "Compute",
+      "category": "AWS"
+    },
+    {
+      "kind": "s3",
+      "label": "Object storage",
+      "category": "AWS"
+    },
+    {
+      "kind": "lambda",
+      "label": "Function",
+      "category": "AWS"
+    },
+    {
+      "kind": "rds",
+      "label": "Relational DB",
+      "category": "AWS"
+    },
+    {
+      "kind": "dynamodb",
+      "label": "Key-value DB",
+      "category": "AWS"
+    },
+    {
+      "kind": "sqs",
+      "label": "Message queue",
+      "category": "AWS"
+    },
+    {
+      "kind": "sns",
+      "label": "Pub/sub",
+      "category": "AWS"
+    },
+    {
+      "kind": "cloudfront",
+      "label": "CDN",
+      "category": "AWS"
+    },
+    {
+      "kind": "aws-api-gateway",
+      "label": "API gateway",
+      "category": "AWS"
+    },
+    {
+      "kind": "vpc",
+      "label": "Network",
+      "category": "AWS"
+    },
+    {
+      "kind": "start-end",
+      "label": "Start / End",
+      "category": "Flowchart"
+    },
+    {
+      "kind": "process",
+      "label": "Process",
+      "category": "Flowchart"
+    },
+    {
+      "kind": "decision",
+      "label": "Decision",
+      "category": "Flowchart"
+    },
+    {
+      "kind": "input-output",
+      "label": "Input / Output",
+      "category": "Flowchart"
+    },
+    {
+      "kind": "document",
+      "label": "Document",
+      "category": "Flowchart"
+    }
+  ]
+}

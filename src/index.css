@@ -1,0 +1,70 @@
+@import 'tailwindcss';
+@import 'tldraw/tldraw.css';
+
+:root {
+  --drawai-bg: #f7f7f5;
+  --drawai-surface: #ffffff;
+  --drawai-border: #e2e2de;
+  --drawai-text: #1a1a18;
+  --drawai-muted: #6b6b66;
+  --drawai-accent: #2563eb;
+  --drawai-accent-hover: #1d4ed8;
+  --drawai-danger: #dc2626;
+  --drawai-grid-bg: #ffffff;
+  --drawai-grid-minor: rgba(0, 0, 0, 0.05);
+  --drawai-grid-major: rgba(0, 0, 0, 0.09);
+  color-scheme: light;
+}
+
+html.dark {
+  --drawai-bg: #121214;
+  --drawai-surface: #1c1c1f;
+  --drawai-border: #2e2e33;
+  --drawai-text: #f2f2f0;
+  --drawai-muted: #9a9a94;
+  --drawai-accent: #3b82f6;
+  --drawai-accent-hover: #60a5fa;
+  --drawai-danger: #f87171;
+  --drawai-grid-bg: #151515;
+  --drawai-grid-minor: rgba(255, 255, 255, 0.05);
+  --drawai-grid-major: rgba(255, 255, 255, 0.09);
+  color-scheme: dark;
+}
+
+/* Match canvas fill to the Miro-style grid background. */
+.tl-theme__light {
+  --tl-color-background: var(--drawai-grid-bg);
+}
+
+.tl-theme__dark {
+  --tl-color-background: var(--drawai-grid-bg);
+}
+
+.drawai-grid {
+  pointer-events: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--drawai-bg);
+  color: var(--drawai-text);
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}

@@ -1,0 +1,46 @@
+{
+  "name": "drawai",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "cd server && .venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:sync": "node sync-server/server.mjs",
+    "test:sync": "node --test --test-force-exit \"sync-server/test/*.nodetest.mjs\"",
+    "import:rooms": "node sync-server/import-rooms.mjs",
+    "dev:all": "concurrently -n web,api,sync -c blue,green,magenta \"npm run dev\" \"npm run dev:server\" \"npm run dev:sync\"",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "sync:kinds": "cp public/presets/kinds.json server/kinds.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@tldraw/sync": "^5.6.1",
+    "@tldraw/sync-core": "^5.6.1",
+    "elkjs": "^0.12.1",
+    "idb-keyval": "^6.3.0",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tldraw": "^5.6.1",
+    "ws": "^8.23.0",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.7",
+    "oxlint": "^1.90.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6",
+    "vitest": "^4.1.12"
+  }
+}

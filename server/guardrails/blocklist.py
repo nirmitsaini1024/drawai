@@ -21,6 +21,12 @@ BLOCKLIST_PATTERNS: list[re.Pattern[str]] = [
         r"\btell me a joke\b",
         r"\bare you (chatgpt|claude|an?\s+ai|a language model)\b",
         r"\bshow me the api keys?\b",
+        r"\bwrite (me )?(some )?(python|javascript|typescript|java|rust|go|c\+\+|code)\b",
+        r"\b(sing|write) (me )?(a |an )?(song|poem|essay|email)\b",
+        r"\bdraft (an? |the )?email\b",
+        r"\brecommend (a |an )?(restaurant|movie|book|hotel)\b",
+        r"\bhow do i invest\b",
+        r"\b(summarize|summary of) (today'?s )?(news|headlines)\b",
     ]
 ]
 
